@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Boss Built — Phase 3 UI Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:0 0% 3%;--fg:40 10% 92%;--card:0 0% 6%;
+  --primary:42 95% 52%;--chrome:220 8% 72%;--chrome-bright:220 10% 88%;
+  --muted:40 5% 48%;--border:40 8% 14%;--green:145 60% 42%;--red:0 75% 52%;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;height:100vh;font-family:JetBrains Mono,monospace;color:hsl(var(--fg));
+  background:hsl(var(--bg));
+  background-image:
+    radial-gradient(ellipse at 50% -10%,hsl(42 95% 52%/.07),transparent 55%),
+    linear-gradient(180deg,hsl(0 0% 4%),hsl(0 0% 2%));
+}
+h1{font-family:Orbitron,sans-serif;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:hsl(var(--primary));text-shadow:0 0 8px hsl(42 95% 52%/.55),0 0 24px hsl(42 95% 52%/.25);margin:0}
+.app{max-width:1100px;margin:0 auto;padding:14px;display:grid;grid-template-rows:auto 1fr auto;height:100%;gap:12px}
+.header{
+  display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+  border:1px solid hsl(42 60% 40%/.45);
+  background:linear-gradient(90deg,hsl(0 0% 5%),hsl(42 20% 8%/.4) 50%,hsl(0 0% 5%));
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);
+}
+.main{display:grid;grid-template-columns:220px 1fr;gap:12px;min-height:0}
+.panel{
+  border:1px solid hsl(var(--border));
+  background:linear-gradient(180deg,hsl(0 0% 7%/.95),hsl(0 0% 4%/.92));
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  box-shadow:inset 0 1px 0 hsl(220 10% 100%/.04);
+}
+.pt{font-size:10px;padding:8px 10px;border-bottom:1px solid hsl(42 30% 20%/.5);color:hsl(var(--primary));letter-spacing:.14em;background:hsl(0 0% 0%/.35)}
+.grid{padding:10px;display:flex;flex-direction:column;gap:10px}
+.layer-label{font-size:9px;color:hsl(var(--chrome));letter-spacing:.1em;margin-bottom:4px}
+.cells{display:flex;flex-wrap:wrap;gap:4px}
+.cell{
+  width:36px;height:28px;border:1px solid hsl(220 8% 22%);background:hsl(0 0% 5%);
+  display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:hsl(var(--muted));transition:.25s;
+}
+.cell.active{
+  color:hsl(0 0% 5%);border-color:hsl(var(--primary));
+  background:linear-gradient(145deg,hsl(42 95% 58%),hsl(42 90% 42%));
+  box-shadow:0 0 14px hsl(42 95% 52%/.55),inset 0 1px 0 hsl(42 100% 80%/.4);
+  transform:scale(1.06);animation:gold-pulse 1.2s ease-in-out infinite;
+}
+.cell.done{
+  color:hsl(var(--chrome-bright));border-color:hsl(220 10% 55%/.7);
+  background:linear-gradient(145deg,hsl(220 8% 28%),hsl(220 8% 16%));
+  box-shadow:inset 0 1px 0 hsl(220 10% 90%/.15);
+}
+@keyframes gold-pulse{50%{filter:brightness(1.18)}}
+.term{flex:1;overflow:auto;padding:12px;font-size:12px;line-height:1.55;background:hsl(0 0% 2%/.5)}
+.line{margin-bottom:8px;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+.meta{color:hsl(var(--primary));font-weight:600;margin-right:6px}
+.q{border-left:2px solid hsl(var(--primary));padding-left:10px;background:hsl(42 80% 40%/.08)}
+.f{border-left:2px solid hsl(var(--red));padding-left:10px}
+.file{color:hsl(var(--chrome-bright))}
+.composer{display:flex;gap:8px;padding:10px;border-top:1px solid hsl(42 30% 18%/.6);background:hsl(0 0% 0%/.4)}
+input{flex:1;background:hsl(0 0% 5%);border:1px solid hsl(220 8% 20%);color:hsl(var(--fg));padding:10px 12px;font-family:inherit;font-size:12px}
+button{
+  background:linear-gradient(180deg,hsl(42 95% 56%),hsl(42 90% 42%));
+  color:hsl(0 0% 5%);border:1px solid hsl(42 80% 35%);padding:0 16px;
+  font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:.1em;font-weight:700;cursor:pointer;
+  box-shadow:inset 0 1px 0 hsl(42 100% 75%/.35);
+}
+button:disabled{opacity:.4;cursor:not-allowed}
+.status{font-size:10px;color:hsl(var(--muted));display:flex;gap:16px}
+.status strong{color:hsl(var(--primary))}
+.tag{font-size:10px;color:hsl(var(--chrome))}
+#play{
+  background:transparent;border:1px solid hsl(42 60% 45%/.55);color:hsl(var(--primary));
+  padding:6px 12px;box-shadow:none;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div><h1>Boss Built</h1><div class="tag">Genesis Swarm · Black · Gold · Chrome</div></div>
+    <button id="play">PLAY DEMO</button>
+  </header>
+  <div class="main">
+    <aside class="panel">
+      <div class="pt">HYDRA-PRIME · 7 LAYERS</div>
+      <div class="grid" id="grid"></div>
+    </aside>
+    <section class="panel">
+      <div class="pt">LIVE TERMINAL</div>
+      <div class="term" id="term"><div class="line" style="color:hsl(40 5% 45%)">Boss Built terminal ready. Hit PLAY DEMO to watch a full Genesis pass.</div></div>
+      <div class="composer">
+        <input placeholder="Describe what you want Boss Built to create…" disabled/>
+        <button disabled>SEND</button>
+      </div>
+    </section>
+  </div>
+  <div class="status">
+    <span>status <strong id="st">idle</strong></span>
+    <span>palette <strong>black · gold · chrome</strong></span>
+    <span>vector memory <strong>on</strong></span>
+  </div>
+</div>
+<script>
+const AGENTS=[
+{k:'sovereign',s:'SOV',l:1},{k:'sysarch',s:'SYS',l:2},{k:'uxarch',s:'UXA',l:2},{k:'dataarch',s:'DAT',l:2},{k:'secarch',s:'SEC',l:2},{k:'opsarch',s:'OPS',l:2},
+{k:'frontend-lead',s:'FE',l:3},{k:'backend-lead',s:'BE',l:3},{k:'worker',s:'WRK',l:4},
+{k:'bughunter',s:'BUG',l:5},{k:'secauditor',s:'SA',l:5},{k:'uxcritic',s:'UXC',l:5},
+{k:'synthesizer',s:'SYN',l:6},{k:'validator',s:'VAL',l:7}];
+const LABELS={1:'L1·CEO',2:'L2·ARCH',3:'L3·DEPT',4:'L4·WORK',5:'L5·CRIT',6:'L6·SYNC',7:'L7·VALID'};
+const active=new Set(), done=new Set();
+const grid=document.getElementById('grid');
+function renderGrid(){
+  grid.innerHTML='';
+  for(let l=1;l<=7;l++){
+    const cells=AGENTS.filter(a=>a.l===l);
+    if(!cells.length) continue;
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`<div class="layer-label">${LABELS[l]}</div>`;
+    const row=document.createElement('div'); row.className='cells';
+    cells.forEach(a=>{
+      const c=document.createElement('div');
+      c.className='cell'+(active.has(a.k)?' active':'')+(done.has(a.k)&&!active.has(a.k)?' done':'');
+      c.textContent=a.s; row.appendChild(c);
+    });
+    wrap.appendChild(row); grid.appendChild(wrap);
+  }
+}
+renderGrid();
+const term=document.getElementById('term');
+function line(html, cls){
+  const d=document.createElement('div'); d.className='line '+(cls||''); d.innerHTML=html; term.appendChild(d); term.scrollTop=term.scrollHeight;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function demo(){
+  document.getElementById('play').disabled=true;
+  term.innerHTML=''; active.clear(); done.clear(); renderGrid();
+  const steps=[
+    [0,()=>{document.getElementById('st').textContent='SOVEREIGN'; line('—— SOVEREIGN online — reviewing your request with you. ——')}],
+    [200,()=>{active.add('sovereign');renderGrid();line('<span class="meta">[SOV]</span> I\'m right here with you. Before we commit the swarm, I need to make sure we\'re building exactly what you want.')}],
+    [900,()=>line('<span class="meta">[SOV]</span> Context packed (~900 tokens) · 3 memory hits')],
+    [800,()=>line('<span class="meta">[SOV]</span> Clear enough. Briefing the Architect Council.')],
+    [400,()=>{active.delete('sovereign');done.add('sovereign');renderGrid()}],
+    [300,()=>{document.getElementById('st').textContent='Architect Council'; line('—— Architect Council assembling. ——')}],
+    [200,()=>{['sysarch','uxarch','secarch'].forEach(k=>active.add(k));renderGrid();line('<span class="meta">[SYS]</span> Mapping the skeleton so it won\'t collapse under real users.')}],
+    [1000,()=>line('<span class="meta">[SYS]</span> Stack: vite-react · express · drizzle · stripe')],
+    [400,()=>{['sysarch','uxarch','secarch'].forEach(k=>{active.delete(k);done.add(k)});renderGrid()}],
+    [300,()=>{document.getElementById('st').textContent='Workers'; line('—— Workers executing. ——');active.add('worker');renderGrid()}],
+    [500,()=>line('✦ writing  src/App.tsx','file')],
+    [900,()=>line('✦ wrote  src/App.tsx · 128 lines','file')],
+    [500,()=>line('✦ wrote  src/lib/auth.ts · 64 lines','file')],
+    [300,()=>{active.delete('worker');done.add('worker');renderGrid()}],
+    [300,()=>{document.getElementById('st').textContent='Guardians'; line('—— Critic Ring online. ——');active.add('bughunter');renderGrid()}],
+    [800,()=>line('<span class="meta">[BUG]</span> MED: Add rate limit on login endpoint before production.','f')],
+    [400,()=>{active.delete('bughunter');done.add('bughunter');renderGrid()}],
+    [200,()=>{active.add('synthesizer');done.add('synthesizer');active.add('validator');done.add('validator');renderGrid();line('Genesis pass complete. Vector memory updated.')}],
+    [200,()=>{document.getElementById('st').textContent='complete'; document.getElementById('play').disabled=false}],
+  ];
+  for(const [d,fn] of steps){await sleep(d);fn()}
+}
+document.getElementById('play').onclick=demo;
+</script>
+</body>
+</html>

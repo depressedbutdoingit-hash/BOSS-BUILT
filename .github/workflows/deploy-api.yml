@@ -1,0 +1,20 @@
+name: Deploy API
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy notes
+        run: |
+          echo "Wire this job to Railway / Fly / Render / Vercel."
+          echo "Required secrets: OPENROUTER_API_KEY, JWT_SECRET, STRIPE_*, VERCEL_TOKEN, GITHUB_TOKEN"
+          echo "Example (Vercel): npx vercel deploy --prod --token=\$VERCEL_TOKEN"

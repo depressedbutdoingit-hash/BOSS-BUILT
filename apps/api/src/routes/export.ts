@@ -1,0 +1,198 @@
+import { Router } from "express";
+import { store } from "../lib/store.js";
+import { requireAuth } from "../middleware/auth.js";
+import {
+  createZip,
+  deployToVercel,
+  getVercelDeployment,
+  pushToGitHub,
+  parseProjectFiles,
+  ensureDeployable,
+} from "../lib/deploy/index.js";
+import { canFullExport, getPlan } from "../lib/plans.js";
+
+export const exportRouter = Router();
+exportRouter.use(requireAuth);
+
+async function requireExportEntitlement(req: import("express").Request, res: import("express").Response): Promise<boolean> {
+  const user = await store.findUserById(req.user!.id);
+  if (!user || !canFullExport(user.plan)) {
+    res.status(402).json({
+      error: "Full export requires Pro or Elite",
+      code: "EXPORT_LOCKED",
+      message:
+        "Boss Built hosts your app by default. Upgrade to Pro or Elite to download ZIP, push to GitHub, or take the code fully off the platform.",
+      plansUrl: "/billing/plans",
+      plan: user?.plan ?? "none",
+    });
+    return false;
+  }
+  return true;
+}
+
+
+async function projectFiles(projectId: string, userId: string) {
+  const project = await store.getProject(projectId, userId);
+  if (!project) return null;
+  const files = ensureDeployable(
+    project.name,
+    parseProjectFiles(project.generatedCode)
+  );
+  return { project, files };
+}
+
+/** JSON export */
+exportRouter.get("/:id/export", async (req, res) => {
+  if (!(await requireExportEntitlement(req, res))) return;
+  const data = await projectFiles(req.params.id!, req.user!.id);
+  if (!data) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  const name = data.project.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+  res.json({
+    name,
+    projectId: data.project.id,
+    files: data.files,
+    memory: data.project.memory,
+    exportedAt: new Date().toISOString(),
+    provider: "download",
+  });
+});
+
+/** ZIP download */
+exportRouter.get("/:id/export.zip", async (req, res) => {
+  if (!(await requireExportEntitlement(req, res))) return;
+  const data = await projectFiles(req.params.id!, req.user!.id);
+  if (!data) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  const name =
+    data.project.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() ||
+    "boss-built";
+  const zip = createZip(
+    data.files.map((f) => ({ path: f.path, content: f.content }))
+  );
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${name}.zip"`
+  );
+  res.send(Buffer.from(zip));
+});
+
+/** Deploy to Vercel */
+exportRouter.post("/:id/deploy/vercel", async (req, res) => {
+  const data = await projectFiles(req.params.id!, req.user!.id);
+  if (!data) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const token =
+    (typeof req.body?.token === "string" && req.body.token) ||
+    process.env.VERCEL_TOKEN;
+
+  if (!token) {
+    res.status(400).json({
+      error:
+        "Vercel token required. Set VERCEL_TOKEN in .env or pass { token } in body.",
+    });
+    return;
+  }
+
+  try {
+    const name =
+      data.project.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() ||
+      "boss-built-app";
+    const result = await deployToVercel({
+      token,
+      name,
+      files: data.files,
+      projectName: name,
+      target: req.body?.target === "preview" ? "preview" : "production",
+    });
+
+    await store.updateProject(data.project.id, {
+      deploymentUrl: result.url,
+      status: "live",
+    });
+
+    res.json({
+      provider: "vercel",
+      ...result,
+    });
+  } catch (err) {
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "Vercel deploy failed",
+    });
+  }
+});
+
+/** Poll Vercel deployment */
+exportRouter.get("/:id/deploy/vercel/:deploymentId", async (req, res) => {
+  const token = process.env.VERCEL_TOKEN;
+  if (!token) {
+    res.status(400).json({ error: "VERCEL_TOKEN not configured" });
+    return;
+  }
+  try {
+    const status = await getVercelDeployment(token, req.params.deploymentId!);
+    res.json(status);
+  } catch (err) {
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "Status check failed",
+    });
+  }
+});
+
+/** Push to GitHub */
+exportRouter.post("/:id/deploy/github", async (req, res) => {
+  if (!(await requireExportEntitlement(req, res))) return;
+  const data = await projectFiles(req.params.id!, req.user!.id);
+  if (!data) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const token =
+    (typeof req.body?.token === "string" && req.body.token) ||
+    process.env.GITHUB_TOKEN;
+
+  if (!token) {
+    res.status(400).json({
+      error:
+        "GitHub token required. Set GITHUB_TOKEN in .env or pass { token } in body.",
+    });
+    return;
+  }
+
+  try {
+    const name =
+      data.project.name.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() ||
+      "boss-built-app";
+    const result = await pushToGitHub({
+      token,
+      name,
+      description: data.project.description || "Generated by Boss Built",
+      files: data.files,
+      private: req.body?.private !== false,
+    });
+
+    await store.updateProject(data.project.id, {
+      status: "live",
+      githubRepo: result.repoUrl,
+      deploymentUrl: data.project.deploymentUrl ?? result.repoUrl,
+    });
+
+    res.json({
+      provider: "github",
+      ...result,
+    });
+  } catch (err) {
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "GitHub push failed",
+    });
+  }
+});
